@@ -1,0 +1,119 @@
+
+---
+# Source: mongodb/templates/pvc-standalone.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  namespace: alsabor-storage
+  labels:
+    app: mongodb
+    chart: mongodb-7.3.1
+    heritage: Tiller
+    release: my-sample-mongo-without-secret
+  name: mongodb-dev
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "1Gi"
+---
+# Source: mongodb/templates/svc-standalone.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-dev
+  namespace: alsabor-storage
+  labels:
+    app: mongodb
+    chart: mongodb-7.3.1
+    release: "my-sample-mongo-without-secret"
+    heritage: "Tiller"
+spec:
+  type: ClusterIP
+  ports:
+  - name: mongodb
+    port: 27017
+    targetPort: mongodb
+  selector:
+    app: mongodb
+    release: "my-sample-mongo-without-secret"
+---
+# Source: mongodb/templates/deployment-standalone.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-dev
+  namespace: alsabor-storage
+  labels:
+    app: mongodb
+    chart: mongodb-7.3.1
+    release: "my-sample-mongo-without-secret"
+    heritage: "Tiller"
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+      release: "my-sample-mongo-without-secret"
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        release: "my-sample-mongo-without-secret"
+        chart: mongodb-7.3.1
+    spec:
+      securityContext:
+        fsGroup: 1001      
+      initContainers:
+      containers:
+      - name: mongodb-dev
+        image: docker.io/bitnami/mongodb:4.0.12-debian-9-r43
+        imagePullPolicy: "IfNotPresent"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+        - name: MONGODB_SYSTEM_LOG_VERBOSITY
+          value: "0"
+        - name: MONGODB_DISABLE_SYSTEM_LOG
+          value: "no"
+        - name: MONGODB_ENABLE_IPV6
+          value: "no"
+        - name: MONGODB_ENABLE_DIRECTORY_PER_DB
+          value: "no"
+        ports:
+        - name: mongodb
+          containerPort: 27017
+        livenessProbe:
+          exec:
+            command:
+            - mongo
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - mongo
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        volumeMounts:
+        - name: data
+          mountPath: /bitnami/mongodb
+          subPath: 
+        resources:
+          {}
+          
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mongodb-dev
