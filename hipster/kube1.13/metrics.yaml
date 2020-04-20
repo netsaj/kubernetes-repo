@@ -44,7 +44,7 @@ spec:
               memory: 300Mi
           command:
             - /heapster
-            - --source=kubernetes.summary_api:'https://kubernetes.default?kubeletHttps=true&kubeletPort=10250&insecure=true'
+            - --source=kubernetes.summary_api:https://kubernetes.default?kubeletHttps=true&kubeletPort=10250&insecure=true
         - image: k8s.gcr.io/addon-resizer:2.0
           name: heapster-nanny
           resources:
